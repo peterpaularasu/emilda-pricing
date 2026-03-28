@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 
 const formatINR = (n) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
@@ -12,33 +12,17 @@ const WORK_TYPES = {
 
 const MARKET      = { india: { label: "India", flag: "🇮🇳", mult: 1.0 }, gulf: { label: "Gulf", flag: "🇸🇦", mult: 1.8 } };
 const CLIENT_TYPE = { family: { label: "Family Biz", mult: 1.0 }, sme: { label: "SME", mult: 1.1 }, mid: { label: "Mid-Market", mult: 1.25 }, group: { label: "Corp / Group", mult: 1.5 } };
-const URGENCY     = { relaxed: { label: "Relaxed", mult: 0.9 }, normal: { label: "Normal", mult: 1.0 }, tight: { label: "Tight", mult: 1.2 }, fire: { label: "Urgent", mult: 1.4 } };
-const IMPACT      = { operational: { label: "Ops Efficiency", mult: 1.0 }, revenue: { label: "Revenue Unlock", mult: 1.2 }, strategic: { label: "Strategic", mult: 1.4 } };
-const MODEL_OPTS  = { fixed: { label: "🎯 Fixed", d: "One number" }, phased: { label: "📐 Phased", d: "50/50 split" }, retainer: { label: "🔄 Retainer", d: "Monthly" } };
+const URGENCY     = { relaxed: { label: "Relaxed", mult: 0.9 }, normal: { label: "Normal", mult: 1.0 }, tight: { label: "Tight", mult: 1.2 }, fire: { label: "🔥 Urgent", mult: 1.4 } };
+const IMPACT      = { operational: { label: "Ops", mult: 1.0 }, revenue: { label: "Revenue", mult: 1.2 }, strategic: { label: "Strategic", mult: 1.4 } };
+const MODEL_OPTS  = { fixed: { label: "🎯 Fixed", d: "One price" }, phased: { label: "📐 Phased", d: "50 / 50" }, retainer: { label: "🔄 Retainer", d: "Monthly" } };
 
 const hrsToDays = (h) => {
   if (h <= 0) return "—";
   const d = +(h / 8).toFixed(1);
   const w = +(h / 40).toFixed(1);
   if (h < 40) return `${d}d`;
-  return `${w}wk (${d}d)`;
+  return `${w}wk`;
 };
-
-// ── UI ──
-function Pill({ active, onClick, children, sub }) {
-  return (
-    <div onClick={onClick} style={{
-      padding: "8px 13px", borderRadius: 7, cursor: "pointer", transition: "all 0.15s",
-      border: `1.5px solid ${active ? "#C9F76F" : "#232325"}`, background: active ? "#C9F76F08" : "#111113",
-      flex: "1 1 0", minWidth: 60,
-    }}>
-      <div style={{ fontSize: 12, fontWeight: 600, color: active ? "#C9F76F" : "#888" }}>{children}</div>
-      {sub && <div style={{ fontSize: 9, color: active ? "#8AB34A" : "#444", marginTop: 2 }}>{sub}</div>}
-    </div>
-  );
-}
-function Card({ children, style }) { return <div style={{ background: "#111113", border: "1px solid #1E1E20", borderRadius: 11, padding: 20, marginBottom: 14, ...style }}>{children}</div>; }
-function Lbl({ children }) { return <div style={{ fontFamily: "var(--mono)", fontSize: 9.5, letterSpacing: 2, color: "#C9F76F", textTransform: "uppercase", marginBottom: 12 }}>{children}</div>; }
 
 // ══════════════════
 // JPEG GENERATION
@@ -46,204 +30,108 @@ function Lbl({ children }) { return <div style={{ fontFamily: "var(--mono)", fon
 function generateQuoteJPEG({ calc, client, project, prepBy, isQuick, desc, marginX, market, clientType, urgency, impact, adjMult, model, retainerMonths, retainerMo }) {
   const W = 800, pad = 40;
   const lines = calc.lines;
-  const lineCount = lines.length;
-  const H = 580 + lineCount * 50;
-
+  const H = 600 + lines.length * 52;
   const canvas = document.createElement("canvas");
   canvas.width = W * 2; canvas.height = H * 2;
   const ctx = canvas.getContext("2d");
   ctx.scale(2, 2);
 
-  // BG
   ctx.fillStyle = "#0C0C0E";
   ctx.fillRect(0, 0, W, H);
 
-  // Helpers
   const mono = (s) => `${s}px 'Courier New', monospace`;
   const sans = (s, w = "normal") => `${w} ${s}px 'Segoe UI', 'Helvetica Neue', sans-serif`;
-  const drawLine = (y, color = "#1E1E20") => { ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(W - pad, y); ctx.stroke(); };
-  const rightText = (text, y, font, color) => { ctx.font = font; ctx.fillStyle = color; ctx.textAlign = "right"; ctx.fillText(text, W - pad, y); ctx.textAlign = "left"; };
+  const drawLine = (y, c = "#1E1E20") => { ctx.strokeStyle = c; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(W - pad, y); ctx.stroke(); };
+  const rightText = (t, y, f, c) => { ctx.font = f; ctx.fillStyle = c; ctx.textAlign = "right"; ctx.fillText(t, W - pad, y); ctx.textAlign = "left"; };
 
-  let y = pad + 10;
-
-  // Header
-  ctx.font = mono(10);
-  ctx.fillStyle = "#C9F76F";
-  ctx.letterSpacing = "3px";
-  ctx.fillText("EMILDA & CO.", pad, y);
-  ctx.letterSpacing = "0px";
-
+  let y = pad + 12;
+  ctx.font = mono(11); ctx.fillStyle = "#C9F76F"; ctx.fillText("EMILDA & CO.", pad, y);
   const today = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
   rightText(today, y, mono(10), "#666");
-  y += 18;
-
-  ctx.font = mono(9);
-  ctx.fillStyle = "#666";
+  y += 20;
+  ctx.font = mono(9); ctx.fillStyle = "#666";
   ctx.fillText(isQuick ? "SCOPE CHANGE / TASK QUOTE" : "PROJECT QUOTE", pad, y);
   if (prepBy) rightText(`Prepared by: ${prepBy}`, y, mono(9), "#555");
-  y += 28;
+  y += 28; drawLine(y); y += 26;
 
-  drawLine(y);
-  y += 24;
+  ctx.font = sans(20, "bold"); ctx.fillStyle = "#E8E6E3"; ctx.fillText(client || "—", pad, y);
+  y += 24; ctx.font = sans(14); ctx.fillStyle = "#888"; ctx.fillText(isQuick ? (desc || "—") : (project || "—"), pad, y);
+  y += 32; drawLine(y); y += 22;
 
-  // Client & project
-  ctx.font = sans(18, "bold");
-  ctx.fillStyle = "#E8E6E3";
-  ctx.fillText(client || "—", pad, y);
-  y += 22;
-  ctx.font = sans(13);
-  ctx.fillStyle = "#888";
-  ctx.fillText(isQuick ? (desc || "—") : (project || "—"), pad, y);
-  y += 30;
-
-  drawLine(y);
-  y += 20;
-
-  // Column headers
-  ctx.font = mono(8);
-  ctx.fillStyle = "#555";
+  ctx.font = mono(8); ctx.fillStyle = "#555";
   ctx.fillText("WORK TYPE", pad, y);
+  ctx.fillText("HOURS", pad + 280, y); ctx.fillText("DURATION", pad + 350, y); ctx.fillText("RATE", pad + 450, y);
   rightText("AMOUNT", y, mono(8), "#555");
-  ctx.textAlign = "left";
-  ctx.fillText("HOURS", pad + 260, y);
-  ctx.fillText("DURATION", pad + 340, y);
-  ctx.fillText("RATE", pad + 440, y);
-  y += 8;
-  drawLine(y);
-  y += 22;
+  y += 10; drawLine(y); y += 24;
 
-  // Line items
   lines.forEach(l => {
-    ctx.font = sans(13, "bold");
-    ctx.fillStyle = "#E8E6E3";
+    ctx.font = sans(14, "bold"); ctx.fillStyle = "#E8E6E3";
     ctx.fillText(`${l.icon}  ${l.label}`, pad, y);
-
-    ctx.font = mono(11);
-    ctx.fillStyle = "#999";
-    ctx.fillText(`${l.hours}h`, pad + 260, y);
-    ctx.fillText(l.duration, pad + 340, y);
-    ctx.fillText(`₹${l.effRate}/hr`, pad + 440, y);
-
-    rightText(formatINR(l.price), y, mono(12), "#E8E6E3");
-
-    y += 16;
-    ctx.font = mono(9);
-    ctx.fillStyle = "#444";
-    ctx.fillText(`Cost ₹${l.costRate}/hr × ${marginX}× margin × ${adjMult.toFixed(2)}× adj = ₹${l.effRate}/hr`, pad + 26, y);
-    y += 22;
-    drawLine(y, "#131315");
-    y += 14;
+    ctx.font = mono(12); ctx.fillStyle = "#999";
+    ctx.fillText(`${l.hours}h`, pad + 280, y);
+    ctx.fillText(l.duration, pad + 350, y);
+    ctx.fillText(`₹${l.effRate}/hr`, pad + 450, y);
+    rightText(formatINR(l.price), y, `bold ${mono(13)}`, "#E8E6E3");
+    y += 18;
+    ctx.font = mono(9); ctx.fillStyle = "#444";
+    ctx.fillText(`Cost ₹${l.costRate}/hr × ${marginX}× margin × ${adjMult.toFixed(2)}× adj`, pad + 28, y);
+    y += 22; drawLine(y, "#131315"); y += 14;
   });
 
-  y += 6;
-
-  // TOTAL BOX
+  y += 8;
+  const boxH = model === "phased" || model === "retainer" ? 75 : 58;
   ctx.fillStyle = "#151815";
-  const boxH = model === "phased" ? 70 : model === "retainer" ? 70 : 55;
-  ctx.beginPath();
-  ctx.roundRect(pad, y, W - pad * 2, boxH, 8);
-  ctx.fill();
-  ctx.strokeStyle = "#C9F76F25";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.roundRect(pad, y, W - pad * 2, boxH, 8);
-  ctx.stroke();
+  ctx.beginPath(); ctx.roundRect(pad, y, W - pad * 2, boxH, 8); ctx.fill();
+  ctx.strokeStyle = "#C9F76F25"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(pad, y, W - pad * 2, boxH, 8); ctx.stroke();
 
-  const boxPad = pad + 16;
-  y += 22;
-  ctx.font = mono(9);
-  ctx.fillStyle = "#8AB34A";
-  const modelLabel = model === "fixed" ? "TOTAL (FIXED PRICE)" : model === "phased" ? "TOTAL (PHASED — 50% ADVANCE, 50% DELIVERY)" : "TOTAL";
-  ctx.fillText(modelLabel, boxPad, y);
-  rightText(formatINR(calc.totalPrice), y + 8, `bold ${mono(24)}`, "#C9F76F");
+  y += 24;
+  ctx.font = mono(9); ctx.fillStyle = "#8AB34A";
+  const ml = model === "fixed" ? "TOTAL (FIXED)" : model === "phased" ? "TOTAL (50% ADVANCE, 50% DELIVERY)" : "TOTAL";
+  ctx.fillText(ml, pad + 16, y);
+  rightText(formatINR(calc.totalPrice), y + 10, `bold ${mono(26)}`, "#C9F76F");
+  if (model === "retainer") { y += 22; ctx.font = mono(10); ctx.fillStyle = "#888"; ctx.fillText(`${formatINR(retainerMo)}/mo × ${retainerMonths} months`, pad + 16, y); }
+  if (model === "phased") { y += 22; ctx.font = mono(10); ctx.fillStyle = "#888"; const hf = Math.round(calc.totalPrice / 2); ctx.fillText(`Advance: ${formatINR(hf)}  ·  Delivery: ${formatINR(calc.totalPrice - hf)}`, pad + 16, y); }
 
-  if (model === "retainer") {
-    y += 20;
-    ctx.font = mono(10);
-    ctx.fillStyle = "#888";
-    ctx.fillText(`${formatINR(retainerMo)}/mo × ${retainerMonths} months`, boxPad, y);
-  }
-  if (model === "phased") {
-    y += 20;
-    ctx.font = mono(10);
-    ctx.fillStyle = "#888";
-    const half = Math.round(calc.totalPrice / 2);
-    ctx.fillText(`Advance: ${formatINR(half)}  ·  On delivery: ${formatINR(calc.totalPrice - half)}`, boxPad, y);
-  }
+  y += boxH - 6;
+  y += 20; drawLine(y); y += 22;
 
-  y += boxH - 10;
+  ctx.font = mono(8); ctx.fillStyle = "#555"; ctx.fillText("PRICING SETTINGS", pad, y); y += 20;
 
-  // SETTINGS SUMMARY
-  y += 20;
-  drawLine(y);
-  y += 20;
-
-  ctx.font = mono(8);
-  ctx.fillStyle = "#555";
-  ctx.fillText("PRICING SETTINGS", pad, y);
-  y += 18;
-
-  const settingsCol1 = [
+  const s1 = [
     { l: "Market", v: `${MARKET[market].flag} ${MARKET[market].label}${MARKET[market].mult > 1 ? ` (×${MARKET[market].mult})` : ""}` },
-    { l: "Client Type", v: `${CLIENT_TYPE[clientType].label}${CLIENT_TYPE[clientType].mult > 1 ? ` (×${CLIENT_TYPE[clientType].mult})` : ""}` },
+    { l: "Client", v: `${CLIENT_TYPE[clientType].label}${CLIENT_TYPE[clientType].mult > 1 ? ` (×${CLIENT_TYPE[clientType].mult})` : ""}` },
     { l: "Urgency", v: `${URGENCY[urgency].label}${URGENCY[urgency].mult !== 1 ? ` (×${URGENCY[urgency].mult})` : ""}` },
     { l: "Impact", v: `${IMPACT[impact].label}${IMPACT[impact].mult > 1 ? ` (×${IMPACT[impact].mult})` : ""}` },
   ];
-  const settingsCol2 = [
-    { l: "Cost Markup", v: `${marginX}×`, color: "#C9F76F" },
-    { l: "Value Adjustment", v: `${adjMult.toFixed(2)}×`, color: adjMult > 1 ? "#C9F76F" : "#888" },
-    { l: "Total Multiplier", v: `${(marginX * adjMult).toFixed(2)}× cost`, color: "#C9F76F" },
-    { l: "Gross Margin", v: `${calc.margin.toFixed(0)}%`, color: calc.margin >= 50 ? "#C9F76F" : calc.margin >= 35 ? "#A8D84E" : "#F7D76F" },
+  const s2 = [
+    { l: "Cost Markup", v: `${marginX}×`, c: "#C9F76F" },
+    { l: "Value Adj.", v: `${adjMult.toFixed(2)}×`, c: adjMult > 1 ? "#C9F76F" : "#888" },
+    { l: "Total Mult.", v: `${(marginX * adjMult).toFixed(2)}× cost`, c: "#C9F76F" },
+    { l: "Margin", v: `${calc.margin.toFixed(0)}%`, c: calc.margin >= 50 ? "#C9F76F" : calc.margin >= 35 ? "#A8D84E" : "#F7D76F" },
   ];
+  s1.forEach((s, i) => { ctx.font = sans(11); ctx.fillStyle = "#555"; ctx.fillText(s.l, pad, y + i * 22); ctx.fillStyle = "#CCC"; ctx.fillText(s.v, pad + 120, y + i * 22); });
+  s2.forEach((s, i) => { ctx.font = sans(11); ctx.fillStyle = "#555"; ctx.fillText(s.l, pad + 380, y + i * 22); ctx.font = mono(11); ctx.fillStyle = s.c || "#CCC"; ctx.fillText(s.v, pad + 510, y + i * 22); });
 
-  settingsCol1.forEach((s, i) => {
-    ctx.font = sans(11);
-    ctx.fillStyle = "#555";
-    ctx.fillText(s.l, pad, y + i * 20);
-    ctx.fillStyle = "#CCC";
-    ctx.fillText(s.v, pad + 120, y + i * 20);
-  });
-  settingsCol2.forEach((s, i) => {
-    ctx.font = sans(11);
-    ctx.fillStyle = "#555";
-    ctx.fillText(s.l, pad + 380, y + i * 20);
-    ctx.font = mono(11);
-    ctx.fillStyle = s.color || "#CCC";
-    ctx.fillText(s.v, pad + 520, y + i * 20);
-  });
-
-  y += 90;
-
-  // Summary boxes
-  const boxW = (W - pad * 2 - 30) / 4;
+  y += 100;
+  const bW = (W - pad * 2 - 30) / 4;
   [
-    { l: "TOTAL HOURS", v: `${calc.totalHrs}h`, s: hrsToDays(calc.totalHrs) },
-    { l: "AVG EFF. RATE", v: `₹${calc.avgEffRate}/hr`, s: null },
-    { l: "YOUR COST", v: formatINR(calc.totalCost), s: null },
-    { l: "GROSS PROFIT", v: formatINR(calc.totalPrice - calc.totalCost), s: `${calc.margin.toFixed(0)}% margin` },
+    { l: "HOURS", v: `${calc.totalHrs}h`, s: hrsToDays(calc.totalHrs) },
+    { l: "AVG RATE", v: `₹${calc.avgEffRate}/hr` },
+    { l: "YOUR COST", v: formatINR(calc.totalCost) },
+    { l: "PROFIT", v: formatINR(calc.totalPrice - calc.totalCost), s: `${calc.margin.toFixed(0)}%` },
   ].forEach((b, i) => {
-    const bx = pad + i * (boxW + 10);
-    ctx.fillStyle = "#0D0D0F";
-    ctx.beginPath(); ctx.roundRect(bx, y, boxW, 55, 6); ctx.fill();
-    ctx.font = mono(7);
-    ctx.fillStyle = "#444";
-    ctx.fillText(b.l, bx + 10, y + 16);
-    ctx.font = mono(12);
-    ctx.fillStyle = "#E8E6E3";
-    ctx.fillText(b.v, bx + 10, y + 34);
-    if (b.s) { ctx.font = mono(8); ctx.fillStyle = "#555"; ctx.fillText(b.s, bx + 10, y + 47); }
+    const bx = pad + i * (bW + 10);
+    ctx.fillStyle = "#0D0D0F"; ctx.beginPath(); ctx.roundRect(bx, y, bW, 58, 6); ctx.fill();
+    ctx.font = mono(7); ctx.fillStyle = "#444"; ctx.fillText(b.l, bx + 10, y + 18);
+    ctx.font = mono(13); ctx.fillStyle = "#E8E6E3"; ctx.fillText(b.v, bx + 10, y + 36);
+    if (b.s) { ctx.font = mono(9); ctx.fillStyle = "#555"; ctx.fillText(b.s, bx + 10, y + 50); }
   });
 
-  y += 72;
+  y += 78;
+  ctx.font = mono(9); ctx.fillStyle = "#333"; ctx.textAlign = "center";
+  ctx.fillText("emilda.co  ·  Chaos to Control", W / 2, y); ctx.textAlign = "left";
 
-  // Footer
-  ctx.font = mono(9);
-  ctx.fillStyle = "#333";
-  ctx.textAlign = "center";
-  ctx.fillText("emilda.co  ·  Chaos to Control", W / 2, y);
-  ctx.textAlign = "left";
-
-  // Export
   return canvas.toDataURL("image/jpeg", 0.95);
 }
 
@@ -257,7 +145,7 @@ export default function App() {
   const [urgency, setUrgency] = useState("normal");
   const [impact, setImpact] = useState("operational");
   const [model, setModel] = useState("fixed");
-  const [marginX, setMarginX] = useState(2.5); // cost multiplier
+  const [marginX, setMarginX] = useState(2.5);
 
   const [clientName, setClientName] = useState("");
   const [projectName, setProjectName] = useState("");
@@ -310,8 +198,7 @@ export default function App() {
   const mColor = (m) => m >= 55 ? "#C9F76F" : m >= 40 ? "#A8D84E" : m >= 25 ? "#F7D76F" : "#F76F6F";
 
   const doGenerate = (calc, client, project, prepBy, isQuick, desc) => {
-    const img = generateQuoteJPEG({ calc, client, project, prepBy, isQuick, desc, marginX, market, clientType, urgency, impact, adjMult, model, retainerMonths, retainerMo });
-    setQuoteImg(img);
+    setQuoteImg(generateQuoteJPEG({ calc, client, project, prepBy, isQuick, desc, marginX, market, clientType, urgency, impact, adjMult, model, retainerMonths, retainerMo }));
   };
 
   const downloadImg = () => {
@@ -323,134 +210,328 @@ export default function App() {
     a.click();
   };
 
-  // ── VALUE FACTORS ──
-  const ValueFactors = () => (
-    <Card>
-      <Lbl>Value Adjustments</Lbl>
-      <p style={{ fontSize: 10, color: "#555", marginBottom: 10 }}>Adjust from baseline. India + Family + Normal + Ops = 1.0× (no change).</p>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <div>
-          <div style={{ fontSize: 10, color: "#555", marginBottom: 6 }}>Market</div>
-          <div style={{ display: "flex", gap: 6 }}>
-            {Object.entries(MARKET).map(([k, v]) => <Pill key={k} active={market === k} onClick={() => setMarket(k)} sub={v.mult > 1 ? `×${v.mult}` : "base"}>{v.flag} {v.label}</Pill>)}
-          </div>
-        </div>
-        <div>
-          <div style={{ fontSize: 10, color: "#555", marginBottom: 6 }}>Client</div>
-          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-            {Object.entries(CLIENT_TYPE).map(([k, v]) => <Pill key={k} active={clientType === k} onClick={() => setClientType(k)} sub={v.mult > 1 ? `×${v.mult}` : "base"}>{v.label}</Pill>)}
-          </div>
-        </div>
-        <div>
-          <div style={{ fontSize: 10, color: "#555", marginBottom: 6 }}>Urgency</div>
-          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-            {Object.entries(URGENCY).map(([k, v]) => <Pill key={k} active={urgency === k} onClick={() => setUrgency(k)} sub={v.mult !== 1 ? `×${v.mult}` : "base"}>{v.label}</Pill>)}
-          </div>
-        </div>
-        <div>
-          <div style={{ fontSize: 10, color: "#555", marginBottom: 6 }}>Impact</div>
-          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-            {Object.entries(IMPACT).map(([k, v]) => <Pill key={k} active={impact === k} onClick={() => setImpact(k)} sub={v.mult > 1 ? `×${v.mult}` : "base"}>{v.label}</Pill>)}
-          </div>
-        </div>
-      </div>
-      <div style={{ marginTop: 10, padding: "7px 10px", background: adjMult === 1 ? "#1A1A1C" : "#C9F76F08", border: `1px solid ${adjMult === 1 ? "#232325" : "#C9F76F15"}`, borderRadius: 5, display: "flex", justifyContent: "space-between" }}>
-        <span style={{ fontSize: 11, color: adjMult === 1 ? "#666" : "#8AB34A" }}>{adjMult === 1 ? "No adjustment" : "Adjustment applied"}</span>
-        <span style={{ fontSize: 13, fontFamily: "var(--mono)", fontWeight: 700, color: adjMult === 1 ? "#888" : "#C9F76F" }}>{adjMult.toFixed(2)}×</span>
-      </div>
-    </Card>
-  );
-
-  // ── WORK LINES ──
-  const WorkLines = ({ enabled, hours, onToggle, onHours, calc }) => (
-    <Card>
-      <Lbl>Work Breakdown</Lbl>
-      <p style={{ fontSize: 10, color: "#555", marginBottom: 10 }}>Toggle types, enter hours. Client rate = cost × {marginX}× margin{adjMult > 1 ? ` × ${adjMult.toFixed(2)}× adj` : ""}.</p>
-      <div style={{ overflowX: "auto" }}>
-        <div style={{ minWidth: 600 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "30px 1fr 80px 70px 90px 95px", gap: 6, padding: "4px 0", borderBottom: "1px solid #1E1E20", fontSize: 8, fontFamily: "var(--mono)", color: "#444", letterSpacing: 1 }}>
-            <div></div><div>TYPE</div><div style={{ textAlign: "right" }}>HOURS</div><div style={{ textAlign: "center" }}>DURATION</div><div style={{ textAlign: "right" }}>RATE</div><div style={{ textAlign: "right" }}>AMOUNT</div>
-          </div>
-          {Object.entries(WORK_TYPES).map(([k, wt]) => {
-            const on = enabled[k], h = hours[k];
-            const effRate = Math.round(wt.costRate * marginX * adjMult);
-            return (
-              <div key={k} style={{ display: "grid", gridTemplateColumns: "30px 1fr 80px 70px 90px 95px", alignItems: "center", gap: 6, padding: "10px 0", borderBottom: "1px solid #161618", opacity: on ? 1 : 0.3 }}>
-                <input type="checkbox" checked={on} onChange={() => onToggle(k)} style={{ accentColor: "#C9F76F", width: 15, height: 15, cursor: "pointer" }} />
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: on ? "#E8E6E3" : "#666" }}>{wt.icon} {wt.label}</div>
-                  <div style={{ fontSize: 9, color: "#444" }}>Cost ₹{wt.costRate} → ₹{effRate}/hr</div>
-                </div>
-                <input type="number" min={0} max={2000} value={h || ""} placeholder="0" onChange={e => onHours(k, Math.max(0, Number(e.target.value)))} disabled={!on}
-                  style={{ width: "100%", padding: "7px 6px", borderRadius: 5, border: "1px solid #232325", background: "#0D0D0F", color: "#E8E6E3", fontSize: 13, fontFamily: "var(--mono)", outline: "none", textAlign: "right" }} />
-                <div style={{ fontSize: 10, color: "#666", textAlign: "center" }}>{on && h > 0 ? hrsToDays(h) : "—"}</div>
-                <div style={{ fontFamily: "var(--mono)", fontSize: 11, color: "#888", textAlign: "right" }}>₹{effRate}</div>
-                <div style={{ fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, color: on && h > 0 ? "#C9F76F" : "#333", textAlign: "right" }}>{on && h > 0 ? formatINR(effRate * h) : "—"}</div>
-              </div>
-            );
-          })}
-          <div style={{ display: "grid", gridTemplateColumns: "30px 1fr 80px 70px 90px 95px", gap: 6, padding: "10px 0", fontWeight: 700, borderTop: "1px solid #232325" }}>
-            <div></div><div style={{ color: "#888", fontSize: 12 }}>Total</div>
-            <div style={{ fontFamily: "var(--mono)", textAlign: "right", fontSize: 12 }}>{calc.totalHrs}h</div>
-            <div style={{ fontSize: 10, textAlign: "center", color: "#666" }}>{hrsToDays(calc.totalHrs)}</div>
-            <div style={{ fontFamily: "var(--mono)", textAlign: "right", fontSize: 10, color: "#888" }}>avg ₹{calc.avgEffRate}</div>
-            <div style={{ fontFamily: "var(--mono)", textAlign: "right", color: "#C9F76F", fontSize: 12 }}>{formatINR(calc.totalPrice)}</div>
-          </div>
-        </div>
-      </div>
-    </Card>
-  );
-
-  const tabs = [
-    { k: "project", l: "Project Quote", icon: "📐" },
-    { k: "quick", l: "Quick Task", icon: "⚡" },
-    { k: "ratecard", l: "Rate Card", icon: "📊" },
-  ];
-
   // ── QUOTE IMAGE VIEW ──
   if (quoteImg) {
     return (
-      <div style={{ minHeight: "100vh", background: "#09090B", color: "#E8E6E3", fontFamily: "'DM Sans', system-ui, sans-serif", "--mono": "'Space Mono', monospace", padding: 20 }}>
-        <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;700&family=Space+Mono:wght@400;700&display=swap'); * { box-sizing: border-box; margin: 0; padding: 0; }`}</style>
+      <div style={{ minHeight: "100vh", background: "#09090B", color: "#E8E6E3", fontFamily: "var(--sans)", padding: 16 }}>
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap');
+          :root { --sans: 'DM Sans', system-ui, sans-serif; --mono: 'Space Mono', monospace; }
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+        `}</style>
         <div style={{ maxWidth: 850, margin: "0 auto" }}>
-          <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-            <button onClick={() => setQuoteImg(null)} style={{ padding: "10px 16px", borderRadius: 7, border: "1.5px solid #232325", background: "transparent", color: "#888", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>← Back</button>
-            <button onClick={downloadImg} style={{ padding: "10px 20px", borderRadius: 7, border: "none", background: "#C9F76F", color: "#09090B", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>⬇ Download JPEG</button>
+          <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+            <button onClick={() => setQuoteImg(null)} className="btn-back">← Back</button>
+            <button onClick={downloadImg} className="btn-green">⬇ Download JPEG</button>
           </div>
-          <p style={{ fontSize: 12, color: "#555", marginBottom: 12 }}>Right-click or long-press to save/share. Or use the download button above.</p>
-          <img src={quoteImg} alt="Quote" style={{ width: "100%", borderRadius: 10, border: "1px solid #1E1E20" }} />
+          <p style={{ fontSize: 14, color: "#888", marginBottom: 14 }}>Long-press or right-click the image to save/share via WhatsApp.</p>
+          <img src={quoteImg} alt="Quote" style={{ width: "100%", borderRadius: 12, border: "1px solid #1E1E20" }} />
         </div>
       </div>
     );
   }
 
+  const tabs = [
+    { k: "project", l: "Project", icon: "📐" },
+    { k: "quick", l: "Quick Task", icon: "⚡" },
+    { k: "ratecard", l: "Rates", icon: "📊" },
+  ];
+
+  // ── SHARED: Value Factors ──
+  const ValueFactors = () => (
+    <div className="card">
+      <div className="lbl">Value Adjustments</div>
+      <p className="hint">India + Family + Normal + Ops = no change from rate card.</p>
+      <div className="factor-grid">
+        <div>
+          <div className="factor-label">Market</div>
+          <div className="pill-row">
+            {Object.entries(MARKET).map(([k, v]) => <button key={k} className={`pill ${market === k ? "on" : ""}`} onClick={() => setMarket(k)}>{v.flag} {v.label}{v.mult > 1 ? ` ×${v.mult}` : ""}</button>)}
+          </div>
+        </div>
+        <div>
+          <div className="factor-label">Client</div>
+          <div className="pill-row">
+            {Object.entries(CLIENT_TYPE).map(([k, v]) => <button key={k} className={`pill ${clientType === k ? "on" : ""}`} onClick={() => setClientType(k)}>{v.label}{v.mult > 1 ? ` ×${v.mult}` : ""}</button>)}
+          </div>
+        </div>
+        <div>
+          <div className="factor-label">Urgency</div>
+          <div className="pill-row">
+            {Object.entries(URGENCY).map(([k, v]) => <button key={k} className={`pill ${urgency === k ? "on" : ""}`} onClick={() => setUrgency(k)}>{v.label}{v.mult !== 1 ? ` ×${v.mult}` : ""}</button>)}
+          </div>
+        </div>
+        <div>
+          <div className="factor-label">Impact</div>
+          <div className="pill-row">
+            {Object.entries(IMPACT).map(([k, v]) => <button key={k} className={`pill ${impact === k ? "on" : ""}`} onClick={() => setImpact(k)}>{v.label}{v.mult > 1 ? ` ×${v.mult}` : ""}</button>)}
+          </div>
+        </div>
+      </div>
+      <div className={`adj-bar ${adjMult === 1 ? "" : "active"}`}>
+        <span>{adjMult === 1 ? "No adjustment" : "Adjustment active"}</span>
+        <span className="adj-val">{adjMult.toFixed(2)}×</span>
+      </div>
+    </div>
+  );
+
+  // ── SHARED: Work breakdown ──
+  const WorkBlock = ({ enabled, hours, onToggle, onHours, calc }) => (
+    <div className="card">
+      <div className="lbl">Work Breakdown</div>
+      <p className="hint">Toggle types, enter hours. Rate = cost × {marginX}×{adjMult > 1 ? ` × ${adjMult.toFixed(2)}×` : ""}.</p>
+      {Object.entries(WORK_TYPES).map(([k, wt]) => {
+        const on = enabled[k], h = hours[k];
+        const effRate = Math.round(wt.costRate * marginX * adjMult);
+        return (
+          <div key={k} className={`work-row ${on ? "" : "off"}`}>
+            <div className="work-top">
+              <label className="work-toggle">
+                <input type="checkbox" checked={on} onChange={() => onToggle(k)} />
+                <span className="work-name">{wt.icon} {wt.label}</span>
+              </label>
+              <div className="work-rate">₹{effRate}/hr</div>
+            </div>
+            {on && (
+              <div className="work-bottom">
+                <div className="work-hours-wrap">
+                  <button className="stepper" onClick={() => onHours(k, Math.max(0, h - 1))}>−</button>
+                  <input type="number" min={0} max={2000} value={h || ""} placeholder="0"
+                    onChange={e => onHours(k, Math.max(0, Number(e.target.value)))}
+                    className="work-hours-input" />
+                  <button className="stepper" onClick={() => onHours(k, h + 1)}>+</button>
+                  <span className="work-hrs-label">hours</span>
+                </div>
+                <div className="work-meta">
+                  <span>{hrsToDays(h)}</span>
+                  <span className="work-line-total">{h > 0 ? formatINR(effRate * h) : "—"}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+      {/* Totals */}
+      <div className="work-total-row">
+        <div>
+          <span className="total-label">Total</span>
+          <span className="total-hrs">{calc.totalHrs}h · {hrsToDays(calc.totalHrs)}</span>
+        </div>
+        <div className="total-amount">{formatINR(calc.totalPrice)}</div>
+      </div>
+    </div>
+  );
+
+  // ── SHARED: Margin slider ──
+  const MarginSlider = () => (
+    <div className="card">
+      <div className="lbl">Cost Markup</div>
+      <p className="hint">Your delivery cost × this = client rate. 2.5× minimum, 4× premium.</p>
+      <div className="margin-control">
+        <div className="margin-slider-wrap">
+          <span className="margin-bound">2.5×</span>
+          <input type="range" min={250} max={400} value={marginX * 100}
+            onChange={e => setMarginX(Number(e.target.value) / 100)}
+            className="slider" style={{ "--v": `${((marginX - 2.5) / 1.5) * 100}%` }} />
+          <span className="margin-bound">4×</span>
+        </div>
+        <div className="margin-value">{marginX.toFixed(1)}×</div>
+      </div>
+      <div className="margin-presets">
+        {[2.5, 3.0, 3.5, 4.0].map(v => (
+          <button key={v} className={`preset ${marginX === v ? "on" : ""}`} onClick={() => setMarginX(v)}>{v}×</button>
+        ))}
+      </div>
+      <div className="margin-preview">
+        {Object.entries(WORK_TYPES).map(([k, wt]) => (
+          <span key={k}>{wt.icon} ₹{wt.costRate}→<b>₹{Math.round(wt.costRate * marginX)}</b></span>
+        ))}
+      </div>
+    </div>
+  );
+
+  // ── SHARED: Price summary bar ──
+  const PriceSummary = ({ calc, onGenerate, disabled, label = "CLIENT QUOTE" }) => (
+    <div className="price-bar">
+      <div className="price-left">
+        <div className="price-label">{label}</div>
+        <div className="price-amount">{formatINR(calc.totalPrice)}</div>
+        <div className="price-sub">{calc.totalHrs}h · {hrsToDays(calc.totalHrs)} · {calc.margin.toFixed(0)}% margin</div>
+      </div>
+      <button className="btn-green generate-btn" disabled={disabled} onClick={onGenerate}>
+        📸 Generate Quote
+      </button>
+    </div>
+  );
+
   return (
-    <div style={{ minHeight: "100vh", background: "#09090B", color: "#E8E6E3", fontFamily: "'DM Sans', system-ui, sans-serif", "--mono": "'Space Mono', monospace" }}>
+    <div className="app">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,700&family=Space+Mono:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap');
+        :root {
+          --sans: 'DM Sans', system-ui, sans-serif;
+          --mono: 'Space Mono', monospace;
+          --bg: #09090B; --card: #111113; --border: #1E1E20;
+          --lime: #C9F76F; --lime-dim: #8AB34A;
+          --text: #E8E6E3; --muted: #888; --dim: #555; --faint: #333;
+        }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        .inp { width: 100%; padding: 9px 12px; border-radius: 6px; border: 1px solid #232325; background: #0D0D0F; color: #E8E6E3; font-size: 13px; font-family: inherit; outline: none; }
-        .inp:focus { border-color: #C9F76F40; }
+        body { background: var(--bg); }
+        .app { min-height: 100vh; background: var(--bg); color: var(--text); font-family: var(--sans); }
+
+        /* HEADER */
+        .header { border-bottom: 1px solid var(--border); padding: 16px; }
+        .header-inner { max-width: 720px; margin: 0 auto; }
+        .brand { font-family: var(--mono); font-size: 11px; letter-spacing: 3px; color: var(--lime); }
+        .header h1 { font-size: 20px; font-weight: 700; margin-top: 4px; }
+        .tab-bar { display: flex; gap: 4px; margin-top: 12px; background: #0D0D0F; border-radius: 10px; padding: 4px; }
+        .tab-btn { flex: 1; padding: 12px 8px; border-radius: 8px; border: none; cursor: pointer;
+          background: transparent; color: var(--dim); font-size: 14px; font-weight: 600;
+          font-family: var(--sans); display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .tab-btn.active { background: #1C1C1E; color: var(--text); }
+
+        /* CONTENT */
+        .content { max-width: 720px; margin: 0 auto; padding: 16px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+        .lbl { font-family: var(--mono); font-size: 11px; letter-spacing: 2px; color: var(--lime); text-transform: uppercase; margin-bottom: 12px; font-weight: 700; }
+        .hint { font-size: 13px; color: var(--dim); margin-bottom: 16px; line-height: 1.5; }
+
+        /* INPUTS */
+        .field-grid { display: grid; gap: 12px; }
+        @media (min-width: 500px) { .field-grid { grid-template-columns: 1fr 1fr; } }
+        .field-grid.three { grid-template-columns: 1fr; }
+        @media (min-width: 600px) { .field-grid.three { grid-template-columns: 1fr 1fr 1fr; } }
+        .field label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px; font-weight: 500; }
+        .inp { width: 100%; padding: 14px 16px; border-radius: 10px; border: 1.5px solid #232325;
+          background: #0D0D0F; color: var(--text); font-size: 16px; font-family: var(--sans); outline: none; }
+        .inp:focus { border-color: var(--lime); }
         .inp::placeholder { color: #3A3A3A; }
-        .btn { padding: 12px 20px; border-radius: 8px; border: none; background: #C9F76F; color: #09090B; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; }
-        .btn:disabled { opacity: 0.3; cursor: not-allowed; }
-        input[type=range] { -webkit-appearance: none; width: 100%; height: 6px; border-radius: 3px; outline: none; cursor: pointer; background: linear-gradient(to right,#C9F76F var(--v),#1E1E20 var(--v)); }
-        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #C9F76F; border: 3px solid #09090B; cursor: pointer; }
+
+        /* PILLS */
+        .pill-row { display: flex; gap: 6px; flex-wrap: wrap; }
+        .pill { padding: 12px 14px; border-radius: 10px; border: 2px solid #232325; background: var(--card);
+          color: var(--muted); font-size: 14px; font-weight: 600; cursor: pointer; font-family: var(--sans);
+          flex: 1 1 0; min-width: 70px; text-align: center; transition: all 0.15s; }
+        .pill.on { border-color: var(--lime); background: #C9F76F0A; color: var(--lime); }
+        .pill:active { transform: scale(0.97); }
+
+        /* FACTOR GRID */
+        .factor-grid { display: grid; gap: 16px; }
+        @media (min-width: 500px) { .factor-grid { grid-template-columns: 1fr 1fr; } }
+        .factor-label { font-size: 13px; color: var(--dim); margin-bottom: 8px; font-weight: 500; }
+        .adj-bar { margin-top: 14px; padding: 12px 14px; background: #1A1A1C; border: 1px solid #232325;
+          border-radius: 8px; display: flex; justify-content: space-between; align-items: center;
+          font-size: 14px; color: var(--dim); }
+        .adj-bar.active { background: #C9F76F08; border-color: #C9F76F20; color: var(--lime-dim); }
+        .adj-val { font-family: var(--mono); font-weight: 700; font-size: 16px; color: var(--muted); }
+        .adj-bar.active .adj-val { color: var(--lime); }
+
+        /* WORK ROWS */
+        .work-row { padding: 14px 0; border-bottom: 1px solid #1A1A1C; transition: opacity 0.15s; }
+        .work-row.off { opacity: 0.35; }
+        .work-top { display: flex; justify-content: space-between; align-items: center; }
+        .work-toggle { display: flex; align-items: center; gap: 12px; cursor: pointer; font-size: 16px; font-weight: 700; }
+        .work-toggle input { width: 22px; height: 22px; accent-color: var(--lime); cursor: pointer; }
+        .work-name { color: var(--text); }
+        .work-row.off .work-name { color: var(--dim); }
+        .work-rate { font-family: var(--mono); font-size: 14px; color: var(--muted); font-weight: 600; }
+        .work-bottom { margin-top: 12px; padding-left: 34px; display: flex; justify-content: space-between;
+          align-items: center; gap: 12px; flex-wrap: wrap; }
+        .work-hours-wrap { display: flex; align-items: center; gap: 8px; }
+        .stepper { width: 40px; height: 40px; border-radius: 10px; border: 1.5px solid #232325;
+          background: #0D0D0F; color: var(--muted); font-size: 20px; cursor: pointer;
+          display: flex; align-items: center; justify-content: center; font-family: var(--sans); }
+        .stepper:active { border-color: var(--lime); color: var(--lime); }
+        .work-hours-input { width: 80px; padding: 10px 8px; border-radius: 8px; border: 1.5px solid #232325;
+          background: #0D0D0F; color: var(--text); font-size: 18px; font-family: var(--mono);
+          text-align: center; outline: none; font-weight: 700; }
+        .work-hours-input:focus { border-color: var(--lime); }
+        .work-hrs-label { font-size: 14px; color: var(--dim); }
+        .work-meta { display: flex; gap: 16px; font-size: 14px; color: var(--dim); font-family: var(--mono); align-items: center; }
+        .work-line-total { font-weight: 700; color: var(--lime); font-size: 16px; }
+        .work-total-row { display: flex; justify-content: space-between; align-items: center;
+          padding: 16px 0 4px; border-top: 2px solid #232325; margin-top: 8px; }
+        .total-label { font-size: 16px; font-weight: 700; color: var(--muted); margin-right: 12px; }
+        .total-hrs { font-size: 14px; color: var(--dim); font-family: var(--mono); }
+        .total-amount { font-family: var(--mono); font-size: 20px; font-weight: 700; color: var(--lime); }
+
+        /* MARGIN SLIDER */
+        .margin-control { display: flex; align-items: center; gap: 16px; }
+        .margin-slider-wrap { flex: 1; display: flex; align-items: center; gap: 10px; }
+        .margin-bound { font-family: var(--mono); font-size: 13px; color: var(--dim); }
+        .slider { -webkit-appearance: none; width: 100%; height: 8px; border-radius: 4px; outline: none; cursor: pointer;
+          background: linear-gradient(to right, var(--lime) var(--v), #1E1E20 var(--v)); }
+        .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 28px; height: 28px; border-radius: 50%;
+          background: var(--lime); border: 4px solid var(--bg); cursor: pointer; }
+        .margin-value { font-family: var(--mono); font-size: 28px; font-weight: 700; color: var(--lime);
+          min-width: 70px; text-align: center; }
+        .margin-presets { display: flex; gap: 8px; margin-top: 14px; }
+        .preset { flex: 1; padding: 12px; border-radius: 8px; border: 1.5px solid #232325; background: transparent;
+          color: var(--dim); font-family: var(--mono); font-size: 15px; font-weight: 700; cursor: pointer; }
+        .preset.on { border-color: var(--lime); color: var(--lime); background: #C9F76F08; }
+        .preset:active { transform: scale(0.97); }
+        .margin-preview { margin-top: 12px; padding: 10px 14px; background: #0D0D0F; border-radius: 8px;
+          display: flex; flex-wrap: wrap; gap: 12px; font-size: 13px; color: var(--dim); }
+        .margin-preview b { color: var(--lime); font-weight: 700; }
+
+        /* PRICING MODEL */
+        .model-row { display: flex; gap: 6px; }
+        .model-row .pill { padding: 14px 10px; }
+        .retainer-ctrl { display: flex; align-items: center; gap: 10px; margin-top: 14px; font-size: 15px; color: var(--dim); flex-wrap: wrap; }
+        .retainer-val { font-family: var(--mono); font-size: 20px; font-weight: 700; min-width: 30px; text-align: center; }
+        .retainer-mo { margin-left: auto; font-family: var(--mono); font-weight: 700; color: var(--lime); font-size: 16px; }
+
+        /* PRICE BAR */
+        .price-bar { background: linear-gradient(160deg, #181C10 0%, var(--card) 35%); border: 1.5px solid #252720;
+          border-radius: 14px; padding: 20px; margin-bottom: 16px; display: flex; justify-content: space-between;
+          align-items: center; gap: 16px; flex-wrap: wrap; }
+        .price-label { font-family: var(--mono); font-size: 11px; letter-spacing: 2px; color: var(--dim); }
+        .price-amount { font-family: var(--mono); font-size: 32px; font-weight: 700; color: var(--lime); margin: 4px 0; }
+        @media (max-width: 500px) { .price-amount { font-size: 26px; } }
+        .price-sub { font-size: 13px; color: var(--dim); font-family: var(--mono); }
+
+        /* BUTTONS */
+        .btn-green { padding: 16px 24px; border-radius: 12px; border: none; background: var(--lime);
+          color: var(--bg); font-size: 16px; font-weight: 700; cursor: pointer; font-family: var(--sans);
+          white-space: nowrap; }
+        .btn-green:disabled { opacity: 0.3; cursor: not-allowed; }
+        .btn-green:active:not(:disabled) { transform: scale(0.97); }
+        .generate-btn { min-width: 180px; text-align: center; }
+        @media (max-width: 500px) { .generate-btn { width: 100%; } }
+        .btn-back { padding: 12px 20px; border-radius: 10px; border: 2px solid #232325; background: transparent;
+          color: var(--muted); font-size: 15px; font-weight: 600; cursor: pointer; font-family: var(--sans); }
+
+        /* RATE CARD */
+        .rate-item { display: flex; justify-content: space-between; align-items: center;
+          padding: 18px 0; border-bottom: 1px solid #1A1A1C; }
+        .rate-left { display: flex; align-items: center; gap: 14px; }
+        .rate-icon { font-size: 24px; }
+        .rate-name { font-size: 16px; font-weight: 700; }
+        .rate-cost { font-size: 12px; color: var(--dim); margin-top: 2px; }
+        .rate-price { font-family: var(--mono); font-size: 18px; font-weight: 700; color: var(--lime); }
+        .rate-gulf { font-size: 11px; color: var(--dim); margin-top: 2px; }
+
+        .hour-ref { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #131315; }
+        .hour-ref-h { font-family: var(--mono); font-weight: 700; color: var(--lime); font-size: 15px; min-width: 50px; }
+        .hour-ref-d { font-size: 14px; color: var(--muted); }
+        .hour-ref-dur { font-family: var(--mono); font-size: 13px; color: var(--dim); }
+
+        .rules { background: #0D0D0F; border: 2px dashed #1E1E20; border-radius: 12px;
+          padding: 18px; font-size: 14px; color: var(--dim); line-height: 2; }
+        .rules strong { color: var(--lime-dim); font-family: var(--mono); font-size: 11px; letter-spacing: 1px; }
       `}</style>
 
-      <div style={{ borderBottom: "1px solid #1A1A1C", padding: "14px 20px" }}>
-        <div style={{ maxWidth: 900, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
-          <div>
-            <span style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: 3, color: "#C9F76F" }}>EMILDA & CO.</span>
-            <h1 style={{ fontSize: 17, fontWeight: 700, marginTop: 2 }}>Pricing & Quote Generator</h1>
-          </div>
-          <div style={{ display: "flex", gap: 4, background: "#0D0D0F", borderRadius: 8, padding: 3 }}>
+      {/* HEADER */}
+      <div className="header">
+        <div className="header-inner">
+          <div className="brand">EMILDA & CO.</div>
+          <h1>Pricing & Quotes</h1>
+          <div className="tab-bar">
             {tabs.map(t => (
-              <button key={t.k} onClick={() => setTab(t.k)} style={{
-                padding: "7px 14px", borderRadius: 6, border: "none", cursor: "pointer",
-                background: tab === t.k ? "#1C1C1E" : "transparent", color: tab === t.k ? "#E8E6E3" : "#555",
-                fontSize: 11, fontWeight: 600, fontFamily: "inherit", display: "flex", alignItems: "center", gap: 5,
-              }}><span style={{ fontSize: 13 }}>{t.icon}</span> {t.l}</button>
+              <button key={t.k} className={`tab-btn ${tab === t.k ? "active" : ""}`}
+                onClick={() => setTab(t.k)}>
+                <span>{t.icon}</span> {t.l}
+              </button>
             ))}
           </div>
         </div>
@@ -458,187 +539,112 @@ export default function App() {
 
       {/* ═══ PROJECT ═══ */}
       {tab === "project" && (
-        <div style={{ maxWidth: 900, margin: "0 auto", padding: 20 }}>
-          <Card>
-            <Lbl>Client & Project</Lbl>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-              <input className="inp" placeholder="Client name" value={clientName} onChange={e => setClientName(e.target.value)} />
-              <input className="inp" placeholder="Project name" value={projectName} onChange={e => setProjectName(e.target.value)} />
-              <input className="inp" placeholder="Your name" value={preparedBy} onChange={e => setPreparedBy(e.target.value)} />
+        <div className="content">
+          <div className="card">
+            <div className="lbl">Client & Project</div>
+            <div className="field-grid three">
+              <div className="field"><label>Client Name</label><input className="inp" placeholder="e.g. Dr. Mehboob" value={clientName} onChange={e => setClientName(e.target.value)} /></div>
+              <div className="field"><label>Project Name</label><input className="inp" placeholder="e.g. KMCT Nucleus" value={projectName} onChange={e => setProjectName(e.target.value)} /></div>
+              <div className="field"><label>Prepared By</label><input className="inp" placeholder="Your name" value={preparedBy} onChange={e => setPreparedBy(e.target.value)} /></div>
             </div>
-          </Card>
-          <WorkLines enabled={pEnabled} hours={pHours} onToggle={toggleP} onHours={setHP} calc={pCalc} />
+          </div>
 
-          {/* MARGIN SLIDER */}
-          <Card>
-            <Lbl>Cost Markup</Lbl>
-            <p style={{ fontSize: 10, color: "#555", marginBottom: 12 }}>How many × over your delivery cost. 2.5× = minimum viable. 4× = premium.</p>
-            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "#555" }}>2.5×</span>
-              <div style={{ flex: 1 }}>
-                <input type="range" min={250} max={400} value={marginX * 100}
-                  onChange={e => setMarginX(Number(e.target.value) / 100)}
-                  style={{ "--v": `${((marginX - 2.5) / 1.5) * 100}%` }} />
-              </div>
-              <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "#555" }}>4×</span>
-              <div style={{ textAlign: "center", minWidth: 70 }}>
-                <div style={{ fontFamily: "var(--mono)", fontSize: 22, fontWeight: 700, color: "#C9F76F" }}>{marginX.toFixed(1)}×</div>
-                <div style={{ fontSize: 9, color: "#444" }}>cost markup</div>
-              </div>
-            </div>
-            <div style={{ marginTop: 10, display: "flex", gap: 8, fontSize: 10 }}>
-              {[2.5, 3.0, 3.5, 4.0].map(v => (
-                <button key={v} onClick={() => setMarginX(v)} style={{
-                  padding: "4px 12px", borderRadius: 4, border: `1px solid ${marginX === v ? "#C9F76F" : "#232325"}`,
-                  background: marginX === v ? "#C9F76F10" : "transparent", color: marginX === v ? "#C9F76F" : "#666",
-                  fontFamily: "var(--mono)", cursor: "pointer", fontSize: 11,
-                }}>{v}×</button>
-              ))}
-            </div>
-            <div style={{ marginTop: 10, padding: "6px 10px", background: "#0D0D0F", borderRadius: 5, fontSize: 10, color: "#555" }}>
-              Dev: ₹{WORK_TYPES.dev.costRate} × {marginX}× = <span style={{ color: "#C9F76F" }}>₹{Math.round(WORK_TYPES.dev.costRate * marginX)}/hr</span> &nbsp;·&nbsp;
-              Ops: ₹{WORK_TYPES.ops.costRate} × {marginX}× = <span style={{ color: "#C9F76F" }}>₹{Math.round(WORK_TYPES.ops.costRate * marginX)}/hr</span> &nbsp;·&nbsp;
-              Strategy: ₹{WORK_TYPES.strategy.costRate} × {marginX}× = <span style={{ color: "#C9F76F" }}>₹{Math.round(WORK_TYPES.strategy.costRate * marginX)}/hr</span>
-            </div>
-          </Card>
-
+          <WorkBlock enabled={pEnabled} hours={pHours} onToggle={toggleP} onHours={setHP} calc={pCalc} />
+          <MarginSlider />
           <ValueFactors />
 
-          <Card>
-            <Lbl>How to Charge</Lbl>
-            <div style={{ display: "flex", gap: 6, marginBottom: model === "retainer" ? 14 : 0 }}>
-              {Object.entries(MODEL_OPTS).map(([k, v]) => <Pill key={k} active={model === k} onClick={() => setModel(k)} sub={v.d}>{v.label}</Pill>)}
+          <div className="card">
+            <div className="lbl">How to Charge</div>
+            <div className="model-row">
+              {Object.entries(MODEL_OPTS).map(([k, v]) => <button key={k} className={`pill ${model === k ? "on" : ""}`} onClick={() => setModel(k)}>{v.label}<br/><span style={{ fontSize: 12, fontWeight: 400 }}>{v.d}</span></button>)}
             </div>
             {model === "retainer" && (
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 12, color: "#666" }}>Over</span>
-                <button onClick={() => setRetainerMonths(Math.max(1, retainerMonths - 1))} style={{ width: 28, height: 28, borderRadius: 5, border: "1px solid #232325", background: "#0D0D0F", color: "#888", fontSize: 14, cursor: "pointer" }}>−</button>
-                <span style={{ fontFamily: "var(--mono)", fontSize: 18, fontWeight: 700 }}>{retainerMonths}</span>
-                <button onClick={() => setRetainerMonths(Math.min(24, retainerMonths + 1))} style={{ width: 28, height: 28, borderRadius: 5, border: "1px solid #232325", background: "#0D0D0F", color: "#888", fontSize: 14, cursor: "pointer" }}>+</button>
-                <span style={{ fontSize: 12, color: "#666" }}>mo</span>
-                <span style={{ marginLeft: "auto", fontFamily: "var(--mono)", fontWeight: 700, color: "#C9F76F" }}>{formatINR(retainerMo)}/mo</span>
+              <div className="retainer-ctrl">
+                <span>Spread over</span>
+                <button className="stepper" onClick={() => setRetainerMonths(Math.max(1, retainerMonths - 1))}>−</button>
+                <span className="retainer-val">{retainerMonths}</span>
+                <button className="stepper" onClick={() => setRetainerMonths(Math.min(24, retainerMonths + 1))}>+</button>
+                <span>months</span>
+                <span className="retainer-mo">{formatINR(retainerMo)}/mo</span>
               </div>
             )}
-          </Card>
-
-          <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-            <div style={{ flex: 1, background: "linear-gradient(160deg,#181C10 0%,#111113 35%)", border: "1px solid #252720", borderRadius: 10, padding: 18, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <div style={{ fontSize: 9, fontFamily: "var(--mono)", color: "#666", letterSpacing: 2 }}>CLIENT QUOTE</div>
-                <div style={{ fontFamily: "var(--mono)", fontSize: 28, fontWeight: 700, color: "#C9F76F", marginTop: 2 }}>{formatINR(pCalc.totalPrice)}</div>
-              </div>
-              <div style={{ textAlign: "right" }}>
-                <div style={{ fontFamily: "var(--mono)", fontSize: 14, fontWeight: 700, color: mColor(pCalc.margin) }}>{pCalc.margin.toFixed(0)}%</div>
-                <div style={{ fontSize: 9, color: "#555" }}>{pCalc.multiple.toFixed(1)}× cost</div>
-              </div>
-            </div>
-            <button className="btn" style={{ width: 220, padding: "14px 20px" }}
-              disabled={!clientName || pCalc.lines.length === 0}
-              onClick={() => doGenerate(pCalc, clientName, projectName, preparedBy, false, "")}>
-              📸 Generate Quote Image
-            </button>
           </div>
+
+          <PriceSummary calc={pCalc} disabled={!clientName || pCalc.lines.length === 0}
+            onGenerate={() => doGenerate(pCalc, clientName, projectName, preparedBy, false, "")} />
         </div>
       )}
 
       {/* ═══ QUICK TASK ═══ */}
       {tab === "quick" && (
-        <div style={{ maxWidth: 900, margin: "0 auto", padding: 20 }}>
-          <Card>
-            <Lbl>⚡ Quick Task / Scope Change</Lbl>
-            <p style={{ fontSize: 12, color: "#555", marginBottom: 14 }}>Extra feature, scope change, ad-hoc task — price it and generate a quote image.</p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-              <input className="inp" placeholder="Client" value={qClient} onChange={e => setQClient(e.target.value)} />
-              <input className="inp" placeholder="What's the task?" value={qDesc} onChange={e => setQDesc(e.target.value)} />
-              <input className="inp" placeholder="Your name" value={qPrepBy} onChange={e => setQPrepBy(e.target.value)} />
+        <div className="content">
+          <div className="card">
+            <div className="lbl">⚡ Quick Task / Scope Change</div>
+            <p className="hint">Extra feature, scope change, ad-hoc task — price it and send for approval.</p>
+            <div className="field-grid three">
+              <div className="field"><label>Client</label><input className="inp" placeholder="Client name" value={qClient} onChange={e => setQClient(e.target.value)} /></div>
+              <div className="field"><label>Task</label><input className="inp" placeholder="What's the work?" value={qDesc} onChange={e => setQDesc(e.target.value)} /></div>
+              <div className="field"><label>Your Name</label><input className="inp" placeholder="Your name" value={qPrepBy} onChange={e => setQPrepBy(e.target.value)} /></div>
             </div>
-          </Card>
-          <WorkLines enabled={qEnabled} hours={qHours} onToggle={toggleQ} onHours={setHQ} calc={qCalc} />
+          </div>
 
-          <Card>
-            <Lbl>Cost Markup</Lbl>
-            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "#555" }}>2.5×</span>
-              <div style={{ flex: 1 }}>
-                <input type="range" min={250} max={400} value={marginX * 100}
-                  onChange={e => setMarginX(Number(e.target.value) / 100)}
-                  style={{ "--v": `${((marginX - 2.5) / 1.5) * 100}%` }} />
-              </div>
-              <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "#555" }}>4×</span>
-              <div style={{ textAlign: "center", minWidth: 70 }}>
-                <div style={{ fontFamily: "var(--mono)", fontSize: 22, fontWeight: 700, color: "#C9F76F" }}>{marginX.toFixed(1)}×</div>
-              </div>
-            </div>
-          </Card>
-
+          <WorkBlock enabled={qEnabled} hours={qHours} onToggle={toggleQ} onHours={setHQ} calc={qCalc} />
+          <MarginSlider />
           <ValueFactors />
 
-          <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-            <div style={{ flex: 1, background: "linear-gradient(160deg,#181C10 0%,#111113 35%)", border: "1px solid #252720", borderRadius: 10, padding: 18, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <div style={{ fontSize: 9, fontFamily: "var(--mono)", color: "#666", letterSpacing: 2 }}>CHARGE</div>
-                <div style={{ fontFamily: "var(--mono)", fontSize: 28, fontWeight: 700, color: "#C9F76F", marginTop: 2 }}>{formatINR(qCalc.totalPrice)}</div>
-              </div>
-              <div style={{ textAlign: "right", fontSize: 12, color: "#888" }}>{qCalc.totalHrs}h · {hrsToDays(qCalc.totalHrs)}</div>
-            </div>
-            <button className="btn" style={{ width: 220, padding: "14px 20px" }}
-              disabled={!qClient || qCalc.lines.length === 0}
-              onClick={() => doGenerate(qCalc, qClient, "", qPrepBy, true, qDesc)}>
-              📸 Generate Quote Image
-            </button>
-          </div>
+          <PriceSummary calc={qCalc} label="CHARGE THE CLIENT" disabled={!qClient || qCalc.lines.length === 0}
+            onGenerate={() => doGenerate(qCalc, qClient, "", qPrepBy, true, qDesc)} />
         </div>
       )}
 
       {/* ═══ RATE CARD ═══ */}
       {tab === "ratecard" && (
-        <div style={{ maxWidth: 620, margin: "0 auto", padding: "24px 20px" }}>
-          <Card>
-            <Lbl>Emilda Cost Base & Rate Card</Lbl>
-            <p style={{ fontSize: 11, color: "#555", marginBottom: 14, lineHeight: 1.5 }}>
-              Cost = what it costs Emilda per hour (loaded CTC ÷ 160hrs).<br />
-              Client rate = cost × margin multiplier ({marginX}×) × value adjustments.
-            </p>
+        <div className="content">
+          <div className="card">
+            <div className="lbl">Emilda Rate Card</div>
+            <p className="hint">Cost = Emilda's loaded cost. Client rate = cost × {marginX}× markup.</p>
             {Object.entries(WORK_TYPES).map(([k, wt]) => (
-              <div key={k} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 0", borderBottom: "1px solid #161618" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontSize: 20 }}>{wt.icon}</span>
+              <div key={k} className="rate-item">
+                <div className="rate-left">
+                  <span className="rate-icon">{wt.icon}</span>
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 600 }}>{wt.label}</div>
-                    <div style={{ fontSize: 10, color: "#444" }}>Cost: ₹{wt.costRate}/hr</div>
+                    <div className="rate-name">{wt.label}</div>
+                    <div className="rate-cost">Cost: ₹{wt.costRate}/hr</div>
                   </div>
                 </div>
                 <div style={{ textAlign: "right" }}>
-                  <div style={{ fontFamily: "var(--mono)", fontSize: 16, fontWeight: 700, color: "#C9F76F" }}>₹{Math.round(wt.costRate * marginX)}/hr</div>
-                  <div style={{ fontSize: 9, color: "#555" }}>at {marginX}× · Gulf: ₹{Math.round(wt.costRate * marginX * 1.8)}</div>
+                  <div className="rate-price">₹{Math.round(wt.costRate * marginX)}/hr</div>
+                  <div className="rate-gulf">Gulf: ₹{Math.round(wt.costRate * marginX * 1.8)}</div>
                 </div>
               </div>
             ))}
-          </Card>
-          <Card>
-            <Lbl>Hour References</Lbl>
+          </div>
+
+          <div className="card">
+            <div className="lbl">Hour Reference</div>
             {[
               { h: 2, d: "Bug fix, tiny tweak" }, { h: 8, d: "1 day — small feature" },
               { h: 24, d: "3 days — module" }, { h: 40, d: "1 week — feature set" },
               { h: 80, d: "2 weeks — solid build" }, { h: 160, d: "1 month — full app" },
               { h: 400, d: "2.5 months — platform" },
             ].map((r, i) => (
-              <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #131315", fontSize: 12 }}>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <span style={{ fontFamily: "var(--mono)", fontWeight: 700, color: "#C9F76F", minWidth: 36, textAlign: "right" }}>{r.h}h</span>
-                  <span style={{ color: "#888" }}>{r.d}</span>
+              <div key={i} className="hour-ref">
+                <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                  <span className="hour-ref-h">{r.h}h</span>
+                  <span className="hour-ref-d">{r.d}</span>
                 </div>
-                <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "#555" }}>{hrsToDays(r.h)}</span>
+                <span className="hour-ref-dur">{hrsToDays(r.h)}</span>
               </div>
             ))}
-          </Card>
-          <div style={{ background: "#0D0D0F", border: "1px dashed #1E1E20", borderRadius: 10, padding: 14, fontSize: 11, color: "#555", lineHeight: 1.8 }}>
-            <strong style={{ color: "#8AB34A", fontSize: 10, fontFamily: "var(--mono)", letterSpacing: 1 }}>RULES</strong><br />
+          </div>
+
+          <div className="rules">
+            <strong>RULES</strong><br />
             🟢 Never below 2.5× cost<br />
             🟢 Gulf: always ×1.8 minimum on top<br />
             🟢 50% advance on all build work<br />
             🟢 Scope changes = new quotes, never absorb<br />
-            🟢 Generate image → send to Paul → get approval → proceed
+            🟢 Generate image → send to Paul → approval → proceed
           </div>
         </div>
       )}
